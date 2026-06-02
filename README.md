@@ -37,23 +37,23 @@ It exposes a **Model Context Protocol (MCP) server** so any MCP-compatible clien
 └──────────────────────┬──────────────────────────────┘
                        │ MCP Protocol
 ┌──────────────────────▼──────────────────────────────┐
-│                  MCP Server (FastMCP)                │
+│                  MCP Server (FastMCP)               │
 │   search_memory · add_note · summarize_topic        │
-│              find_connections                        │
+│              find_connections                       │
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
-│                 Retrieval Pipeline                   │
-│   Query → HyDE → Hybrid Search → Reranker → LLM    │
+│                 Retrieval Pipeline                  │
+│   Query → HyDE → Hybrid Search → Reranker → LLM     │
 └────────┬─────────────────────────┬──────────────────┘
          │                         │
 ┌────────▼──────────┐   ┌──────────▼──────────────────┐
-│    ChromaDB        │   │      BM25 Index              │
-│  (vector store)    │   │   (keyword search)           │
+│    ChromaDB       │   │      BM25 Index             │
+│  (vector store)   │   │   (keyword search)          │
 └────────┬──────────┘   └─────────────────────────────┘
          │
 ┌────────▼──────────────────────────────────────────┐
-│               Ingestion Pipeline                   │
+│               Ingestion Pipeline                  │
 │   Loader → Chunker → Embedder → Deduplication     │
 │        (Markdown · PDF · URL · plain text)        │
 └───────────────────────────────────────────────────┘
