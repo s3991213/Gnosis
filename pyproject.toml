@@ -12,6 +12,8 @@ license = { text = "MIT" }
 dependencies = [
     # Vector store
     "chromadb>=0.5.0",
+    # Supabase / pgvector
+    "psycopg2-binary>=2.9.0",
     # Embeddings & reranking
     "sentence-transformers>=3.0.0",
     # PDF parsing
