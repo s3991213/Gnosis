@@ -30,8 +30,10 @@ class Chunk:
     metadata: dict = field(default_factory=dict)
 
 
-def _make_id(text: str, source: str, index: int) -> str:
-    digest = hashlib.sha256(f"{source}:{index}:{text[:64]}".encode()).hexdigest()[:16]
+def _make_id(text: str, source: str, position: str) -> str:
+    # *position* must differ between a parent and its first child: both start
+    # with the same text, so the text prefix alone can't tell them apart.
+    digest = hashlib.sha256(f"{source}:{position}:{text[:64]}".encode()).hexdigest()[:16]
     return digest
 
 
@@ -44,13 +46,17 @@ def _split(text: str, size: int, overlap: int) -> list[str]:
     start = 0
     while start < len(text):
         end = start + size
-        # Try to break on a newline or space to avoid cutting mid-word
-        if end < len(text):
-            for sep in ("\n\n", "\n", " "):
-                boundary = text.rfind(sep, start, end)
-                if boundary != -1:
-                    end = boundary + len(sep)
-                    break
+        if end >= len(text):
+            segments.append(text[start:].strip())
+            break
+        # Try to break on a newline or space to avoid cutting mid-word. Only
+        # accept a boundary past the overlap, otherwise the next window would
+        # start at or before this one and the loop would never advance.
+        for sep in ("\n\n", "\n", " "):
+            boundary = text.rfind(sep, start + overlap + 1, end)
+            if boundary != -1:
+                end = boundary + len(sep)
+                break
         segments.append(text[start:end].strip())
         start = end - overlap
     return [s for s in segments if s]
@@ -86,19 +92,19 @@ class ParentChildChunker:
         parent_texts = _split(document.content, self.parent_size, self.child_size // 2)
 
         for p_idx, parent_text in enumerate(parent_texts):
-            parent_id = _make_id(parent_text, document.source, p_idx)
+            parent_id = _make_id(parent_text, document.source, f"p{p_idx}")
             parent_chunk = Chunk(
                 text=parent_text,
                 source=document.source,
                 chunk_id=parent_id,
                 parent_id=None,
-                metadata={**document.metadata, "chunk_type": "parent"},
+                metadata={**document.metadata, "chunk_type": "parent", "position": p_idx},
             )
             all_chunks.append(parent_chunk)
 
             child_texts = _split(parent_text, self.child_size, self.child_overlap)
             for c_idx, child_text in enumerate(child_texts):
-                child_id = _make_id(child_text, document.source, p_idx * 1000 + c_idx)
+                child_id = _make_id(child_text, document.source, f"c{p_idx}.{c_idx}")
                 all_chunks.append(
                     Chunk(
                         text=child_text,

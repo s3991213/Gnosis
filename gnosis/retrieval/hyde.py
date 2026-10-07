@@ -33,7 +33,8 @@ class HyDE:
     )
 
     def __init__(self, llm_client, embedder) -> None:
-        ...
+        self._llm = llm_client
+        self._embedder = embedder
 
     def expand(self, query: str) -> list[float]:
         """
@@ -41,8 +42,12 @@ class HyDE:
 
         Falls back to embedding the raw query if the LLM call fails.
         """
-        ...
+        try:
+            answer = self._llm.complete(self._build_prompt(query), max_tokens=256)
+            return self._embedder.embed_one(answer)
+        except Exception:
+            return self._embedder.embed_one(query)
 
     def _build_prompt(self, query: str) -> str:
         """Fill in the prompt template with *query*."""
-        ...
+        return self.PROMPT_TEMPLATE.format(query=query)

@@ -1,0 +1,19 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Files dropped in for import (./gn → Add a file)
+inbox/*
+!inbox/.gitkeep
+
+# macOS
+.DS_Store

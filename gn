@@ -1,0 +1,13 @@
+#!/bin/sh
+# Open the Gnosis menu: ./gn
+# Any gnosis command works too: ./gn search "sourdough", ./gn --help
+# Starts the Docker stack first if it isn't running.
+set -e
+cd "$(dirname "$0")"
+
+if [ -z "$(docker compose ps --status running -q gnosis 2>/dev/null)" ]; then
+    echo "Starting Gnosis (first run builds the image — a few minutes)..."
+    docker compose up -d
+fi
+
+exec docker compose exec gnosis gnosis "$@"

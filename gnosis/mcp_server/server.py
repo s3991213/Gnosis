@@ -21,7 +21,10 @@ def create_server():
 
     Registers all tools defined in ``gnosis.mcp_server.tools``.
     """
-    ...
+    # Importing tools registers them with the shared FastMCP instance
+    from gnosis.mcp_server.tools import mcp  # noqa: F401
+
+    return mcp
 
 
 def run(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8000) -> None:
@@ -37,7 +40,14 @@ def run(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8000) -> No
     port:
         Listen port (only relevant for SSE transport).
     """
-    ...
+    server = create_server()
+
+    if transport == "stdio":
+        server.run(transport="stdio")
+    elif transport == "sse":
+        server.run(transport="sse", host=host, port=port)
+    else:
+        raise ValueError(f"Unknown transport {transport!r}. Use 'stdio' or 'sse'.")
 
 
 if __name__ == "__main__":

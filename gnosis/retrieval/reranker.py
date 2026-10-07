@@ -22,7 +22,8 @@ class Reranker:
     model_name:
         HuggingFace model identifier for the cross-encoder.
     top_n:
-        Number of top-scored chunks to return.
+        Default number of top-scored chunks to return; can be overridden
+        per call in :meth:`rerank`.
     device:
         Torch device string.  Auto-detected when *None*.
     """
@@ -35,13 +36,31 @@ class Reranker:
         top_n: int = 5,
         device: str | None = None,
     ) -> None:
-        ...
+        from sentence_transformers import CrossEncoder
 
-    def rerank(self, query: str, candidates: list[dict]) -> list[dict]:
+        self._model = CrossEncoder(model_name, device=device)
+        self._top_n = top_n
+
+    def rerank(self, query: str, candidates: list[dict], top_n: int | None = None) -> list[dict]:
         """
-        Score each candidate against *query* and return the top *top_n*.
+        Score each candidate against *query* and return the top *top_n*
+        (defaulting to the value given at construction).
 
         *candidates* must have a ``"text"`` key.  The returned list is sorted
         by descending cross-encoder score and each dict gains a ``"rerank_score"`` key.
         """
-        ...
+        if not candidates:
+            return []
+
+        pairs = [(query, c["text"]) for c in candidates]
+        scores = self._model.predict(pairs)
+
+        ranked = sorted(
+            zip(candidates, scores),
+            key=lambda x: float(x[1]),
+            reverse=True,
+        )
+        results = []
+        for chunk, score in ranked[: top_n or self._top_n]:
+            results.append({**chunk, "rerank_score": float(score)})
+        return results

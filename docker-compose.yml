@@ -1,0 +1,67 @@
+# Zero-config stack: `docker compose up` starts Postgres + pgvector, a small
+# Ollama model, and the Gnosis MCP server pre-loaded with sample notes.
+#
+# Every setting has a working default. Overrides use DOCKER_* names so that a
+# .env written for running Gnosis outside Docker (localhost URLs) can't leak
+# into the containers via compose interpolation.
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_PASSWORD: gnosis
+    ports:
+      # 5433 on the host so it won't collide with an existing local Postgres
+      - "127.0.0.1:${GNOSIS_DB_PORT:-5433}:5432"
+    volumes:
+      - gnosis-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - gnosis-ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # One-shot: downloads the model into the ollama volume, then exits.
+  ollama-pull:
+    image: ollama/ollama:latest
+    entrypoint: ["ollama", "pull", "${DOCKER_LLM_MODEL:-qwen2.5:1.5b}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  gnosis:
+    build: .
+    ports:
+      - "${GNOSIS_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:gnosis@db:5432/postgres}
+      LLM_BASE_URL: ${DOCKER_LLM_BASE_URL:-http://ollama:11434}
+      LLM_MODEL: ${DOCKER_LLM_MODEL:-qwen2.5:1.5b}
+      # Ingested on every start; unchanged chunks are skipped. Set empty to disable.
+      SEED_DIR: ${GNOSIS_SEED_DIR-/app/examples/notes}
+      # Drop files in ./inbox on your machine, then import them from the menu.
+      GNOSIS_INBOX: /app/inbox
+    volumes:
+      - ./inbox:/app/inbox:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+volumes:
+  gnosis-db:
+  gnosis-ollama:
